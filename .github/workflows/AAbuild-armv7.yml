@@ -1,0 +1,52 @@
+name: Build openMHA for ARMv7
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-armv7:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake \
+            libasound2-dev libfftw3-dev libsndfile1-dev \
+            libeigen3-dev portaudio19-dev \
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+
+      - name: Configure with CMake
+        run: |
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc \
+            -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++ \
+            -DCMAKE_INSTALL_PREFIX=./install \
+            -DWITH_LSL=OFF \
+            -DWITH_JACK=OFF \
+            -DWITH_OSC=OFF
+
+      - name: Build
+        run: |
+          cd build
+          make -j$(nproc)
+
+      - name: Install
+        run: |
+          cd build
+          make install
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openMHA-armv7
+          path: build/install/
