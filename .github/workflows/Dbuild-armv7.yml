@@ -1,0 +1,57 @@
+yaml
+name: Build openMHA for ARMv7
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:      # 支持手动触发
+jobs:
+  build-armv7:
+    runs-on: ubuntu-20.04   # 使用 Ubuntu 20.04，与你的开发环境一致
+    
+    steps:
+      # 1. 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      # 2. 安装编译依赖和交叉编译工具链
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake \
+            libasound2-dev libfftw3-dev libsndfile1-dev \
+            libeigen3-dev portaudio19-dev \
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+          
+      # 3. 创建构建目录并配置 CMake
+      - name: Configure with CMake
+        run: |
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc \
+            -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++ \
+            -DCMAKE_INSTALL_PREFIX=./install \
+            -DWITH_LSL=OFF \
+            -DWITH_JACK=OFF \
+            -DWITH_OSC=OFF
+          
+      # 4. 开始编译
+      - name: Build
+        run: |
+          cd build
+          make -j$(nproc)
+          
+      # 5. 安装到指定目录
+      - name: Install
+        run: |
+          cd build
+          make install
+          
+      # 6. 上传编译产物
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openMHA-armv7
+          path: build/install/
